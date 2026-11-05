@@ -1,4 +1,4 @@
-name: Build Vesper
+name: Build
 
 on:
   push:
@@ -8,39 +8,56 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Set up MSVC
-      uses: ilammy/msvc-dev-cmd@v1
+    - uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
 
-    - name: Fetch WebView2 SDK + WIL via NuGet
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Dependencies
       shell: cmd
       run: |
         nuget install Microsoft.Web.WebView2 -OutputDirectory packages -ExcludeVersion
         nuget install Microsoft.Windows.ImplementationLibrary -OutputDirectory packages -ExcludeVersion
 
-    - name: Build executor DLL
+    - name: Rename vendored core
       shell: cmd
       run: |
-        cl /nologo /std:c++17 /EHsc /O2 /MT /LD executor_dll.cpp user32.lib shell32.lib winhttp.lib psapi.lib /link /OUT:executor_dll.dll /SUBSYSTEM:WINDOWS
+        if exist quorum\QuorumAPI.dll copy quorum\QuorumAPI.dll quorum\vesper_core.dll
 
-    - name: Compile resources
+    - name: Resources
       shell: cmd
       run: rc /nologo /fo vesper.res vesper.rc
 
-    - name: Build vesper.exe
+    - name: Native
       shell: cmd
       run: |
         cl /nologo /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE /I "packages\Microsoft.Web.WebView2\build\native\include" /I "packages\Microsoft.Windows.ImplementationLibrary\include" vesper.cpp vesper.res "packages\Microsoft.Web.WebView2\build\native\x64\WebView2LoaderStatic.lib" user32.lib shell32.lib ole32.lib advapi32.lib /link /OUT:vesper.exe /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup
 
-    - name: Upload vesper.exe as artifact
-      uses: actions/upload-artifact@v4
+    - name: Managed
+      shell: cmd
+      run: dotnet build QuorumBridge.csproj -c Release -o build-cs
+
+    - name: Package
+      shell: cmd
+      run: |
+        mkdir dist
+        mkdir dist\lib
+        copy vesper.exe dist\
+        copy build-cs\vesper_svc.exe dist\lib\
+        copy quorum\vesper_core.dll dist\lib\
+        if exist quorum\bin xcopy /E /I /Y quorum\bin dist\lib\bin
+        if exist quorum\erto3e4rortoergn.exe copy quorum\erto3e4rortoergn.exe dist\lib\
+        if exist quorum\Decompiler.exe copy quorum\Decompiler.exe dist\lib\
+        if exist quorum\current_version.txt copy quorum\current_version.txt dist\lib\
+
+    - uses: actions/upload-artifact@v4
       with:
         name: vesper
-        path: vesper.exe
+        path: dist/
         if-no-files-found: error
