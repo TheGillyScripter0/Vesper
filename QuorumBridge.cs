@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 class Program
 {
-    static dynamic core;
+    static object core;
     static Type coreType;
 
     static async Task Main()
