@@ -17,11 +17,13 @@
 #include <thread>
 #include <chrono>
 
+#include <winhttp.h>
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "winhttp.lib")
 
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
@@ -79,6 +81,82 @@ static void stop_service() {
         CloseHandle(g_svc_pi.hThread);
         g_svc_running = false;
     }
+}
+
+// ---- update check ----
+static std::string read_text_file(const fs::path& p) {
+    std::ifstream f(p);
+    if (!f) return "";
+    std::string s((std::istreambuf_iterator<char>(f)), {});
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
+    return s;
+}
+
+static std::string fetch_text(const wchar_t* host, const wchar_t* path) {
+    HINTERNET s = WinHttpOpen(L"Vesper/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, nullptr, nullptr, 0);
+    if (!s) return "";
+    HINTERNET c = WinHttpConnect(s, host, INTERNET_DEFAULT_HTTPS_PORT, 0);
+    std::string out;
+    std::wstring cur_host = host, cur_path = path;
+    for (int redir = 0; redir < 10; ++redir) {
+        HINTERNET r = WinHttpOpenRequest(c, L"GET", cur_path.c_str(), nullptr, nullptr, nullptr, WINHTTP_FLAG_SECURE);
+        if (!r) break;
+        if (!WinHttpSendRequest(r, nullptr, 0, nullptr, 0, 0, 0) || !WinHttpReceiveResponse(r, nullptr)) { WinHttpCloseHandle(r); break; }
+        DWORD status = 0, ssz = sizeof(status);
+        WinHttpQueryHeaders(r, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &status, &ssz, nullptr);
+        if (status == 301 || status == 302 || status == 307) {
+            wchar_t loc[2048]{}; DWORD lsz = sizeof(loc);
+            WinHttpQueryHeaders(r, WINHTTP_QUERY_LOCATION, nullptr, loc, &lsz, nullptr);
+            WinHttpCloseHandle(r);
+            std::wstring u = loc;
+            if (u.find(L"https://") == 0) u = u.substr(8);
+            auto sl = u.find(L'/');
+            WinHttpCloseHandle(c);
+            cur_host = u.substr(0, sl);
+            cur_path = u.substr(sl);
+            c = WinHttpConnect(s, cur_host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
+            continue;
+        }
+        if (status != 200) { WinHttpCloseHandle(r); break; }
+        for (;;) {
+            DWORD avail = 0;
+            if (!WinHttpQueryDataAvailable(r, &avail) || !avail) break;
+            size_t before = out.size(); out.resize(before + avail);
+            DWORD read = 0;
+            if (!WinHttpReadData(r, out.data() + before, avail, &read)) break;
+            out.resize(before + read);
+        }
+        WinHttpCloseHandle(r);
+        break;
+    }
+    WinHttpCloseHandle(c); WinHttpCloseHandle(s);
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r' || out.back() == ' ')) out.pop_back();
+    return out;
+}
+
+static std::atomic<bool> g_update_available{false};
+static std::string       g_latest_version;
+
+static void check_for_update() {
+    std::string local = read_text_file(exe_dir() / L"version.txt");
+    if (local.empty()) local = "0";
+    std::string remote = fetch_text(L"github.com",
+        L"/jackverwimp939-cmd/Vesper/releases/latest/download/version.txt");
+    if (remote.empty()) return;
+    g_latest_version = remote;
+    if (remote != local) g_update_available = true;
+}
+
+static bool launch_updater_and_exit() {
+    fs::path setup = exe_dir() / L"vesper-setup.exe";
+    if (!fs::exists(setup)) return false;
+    STARTUPINFOW si{ sizeof(si) };
+    PROCESS_INFORMATION pi{};
+    std::wstring cmd = L"\"" + setup.wstring() + L"\"";
+    std::vector<wchar_t> cb(cmd.begin(), cmd.end()); cb.push_back(0);
+    if (!CreateProcessW(nullptr, cb.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) return false;
+    CloseHandle(pi.hThread); CloseHandle(pi.hProcess);
+    return true;
 }
 
 static std::string svc_call(const std::string& cmd, const std::string& payload = "") {
@@ -217,6 +295,27 @@ static void handle(const std::string& msg) {
         return;
     }
     if (op == "setPerformance") { reply("\"ok\":true"); return; }
+    if (op == "checkUpdate") {
+        std::thread([id]() {
+            check_for_update();
+            char idbuf[32]; snprintf(idbuf, sizeof(idbuf), "%d", id);
+            std::string body = std::string("{\"id\":") + idbuf +
+                ",\"ok\":true,\"updateAvailable\":" + (g_update_available ? "true" : "false") +
+                ",\"version\":\"" + jesc(g_latest_version) + "\"}";
+            post(body);
+        }).detach();
+        return;
+    }
+    if (op == "installUpdate") {
+        if (launch_updater_and_exit()) {
+            reply("\"ok\":true");
+            stop_service();
+            PostMessage(g_hwnd, WM_CLOSE, 0, 0);
+        } else {
+            reply("\"ok\":false,\"reason\":\"installer-missing\"");
+        }
+        return;
+    }
     if (op == "listFiles") {
         auto list = [](const fs::path& dir){
             std::string out = "["; bool first = true;
@@ -335,6 +434,7 @@ int WINAPI wWinMain(HINSTANCE hinst, HINSTANCE, LPWSTR, int nShow) {
     }
 
     start_service();
+    std::thread([](){ std::this_thread::sleep_for(std::chrono::seconds(3)); check_for_update(); }).detach();
 
     ShowWindow(g_hwnd, nShow);
     UpdateWindow(g_hwnd);

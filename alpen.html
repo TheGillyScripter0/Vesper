@@ -781,8 +781,12 @@
               <div class="toggle" id="s-discord"></div>
             </div>
             <div class="setting-row">
-              <div>Auto-Update<div class="setting-hint">Check for new offsets on startup</div></div>
+              <div>Auto-Update<div class="setting-hint">Check for new version on startup</div></div>
               <div class="toggle on" id="s-autoupdate"></div>
+            </div>
+            <div class="setting-row">
+              <div>Check for Updates<div class="setting-hint">Check manually now and install if available</div></div>
+              <button onclick="checkUpdate()" style="background:var(--accent-dim);border:1px solid var(--accent);color:var(--text);padding:5px 14px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.76rem">Check now</button>
             </div>
           </div>
         </div>
@@ -1586,7 +1590,26 @@
         }, 1000);
         refreshFiles();
         setInterval(refreshFiles, 3000);
+
+        setTimeout(async () => {
+          const r = await bridge('checkUpdate');
+          if (r && r.updateAvailable) {
+            toast('warn', 'Update available (' + (r.version || 'new') + ') — open Settings → Session', 6000);
+          }
+        }, 5000);
       }
+
+      window.checkUpdate = async () => {
+        toast('info', 'checking for update...');
+        const r = await bridge('checkUpdate');
+        if (r && r.updateAvailable) {
+          if (confirm('Update ' + (r.version || 'available') + ' is ready. Install now? Vesper will close and reopen automatically.')) {
+            await bridge('installUpdate');
+          }
+        } else {
+          toast('ok', 'you’re on the latest version');
+        }
+      };
     });
   </script>
 </body>

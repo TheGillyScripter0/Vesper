@@ -50,12 +50,18 @@ jobs:
       shell: cmd
       run: dotnet build QuorumBridge.csproj -c Release -o build-cs
 
+    - name: Write version.txt
+      shell: cmd
+      run: echo %GITHUB_SHA:~0,7% > version.txt
+
     - name: Package main app
       shell: cmd
       run: |
         mkdir dist
         mkdir dist\lib
         copy vesper.exe dist\
+        copy vesper-setup.exe dist\
+        copy version.txt dist\
         copy build-cs\vesper_svc.exe dist\lib\
         copy quorum\vesper_core.dll dist\lib\
         if exist quorum\bin xcopy /E /I /Y quorum\bin dist\lib\bin
@@ -77,4 +83,10 @@ jobs:
       with:
         name: vesper-setup
         path: vesper-setup.exe
+        if-no-files-found: error
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: version
+        path: version.txt
         if-no-files-found: error
