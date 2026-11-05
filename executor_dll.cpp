@@ -9,14 +9,15 @@
 // matches, so the executor keeps working without you deriving new addresses.
 // if a pattern breaks, replace just that one entry in patterns.hpp.
 
-#include <Windows.h>#include <shlobj.h>
+#include <Windows.h>
+#include <shlobj.h>
 #include <psapi.h>
-
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <thread>
 #include <mutex>
 #include <queue>
@@ -24,6 +25,9 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "psapi.lib")
 
 #include "encs.hpp"
 #include "structs.hpp"
@@ -187,8 +191,8 @@ static bool resolve_all() {
     RESOLVE(lua_resume,          Patterns::LuauApi_lua_resume);
     RESOLVE(lua_ref,             Patterns::LuauApi_lua_ref);
     RESOLVE(lua_unref,           Patterns::LuauApi_lua_unref);
-    RESOLVE(lua_setsafeenv,      Patterns::LuauApi_lua_setsafeenv);
-    RESOLVE(lua_setreadonly,     Patterns::LuauApi_lua_setreadonly);
+    // lua_setsafeenv + lua_setreadonly skipped — not present in this patterns.hpp dump.
+    // the environment function L_setreadonly guards against this nullptr below.
 
     // luau_load comes from externals.hpp (it's in UpdateCandidates)
     p_luau_load = (luau_load_t)(g_base + UpdateCandidates::Luau_LuauLoad);
@@ -289,7 +293,7 @@ static int L_setrawmetatable(lua_State* L) {
 }
 
 static int L_setreadonly(lua_State* L) {
-    p_lua_setreadonly(L, 1, p_lua_toboolean(L, 2));
+    if (p_lua_setreadonly) p_lua_setreadonly(L, 1, p_lua_toboolean(L, 2));
     return 0;
 }
 
