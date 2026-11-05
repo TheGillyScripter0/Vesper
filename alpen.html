@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cherry">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vesper</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+
+  <style>
+    /* ========== THEMES ========== */
+    :root, html[data-theme="cherry"] {
+      --bg:#0e0e10; --bg-elev-1:#141214; --bg-elev-2:#1a0f12; --bg-elev-3:#16090c;
+      --border:#2a1518; --border-soft:#1f1316;
+      --text:#f0e8e8; --text-dim:#a09494; --text-faint:#605858;
+      --accent:#d63447; --accent-dim:#8b1a24; --accent-dark:#4a0d13;
+      --accent-glow:rgba(214,52,71,.35);
+      --gold:#c89040; --warn:#d6a647; --err:#ff4455; --ok:#6fcf7a;
+    }
+    html[data-theme="midnight"] {
+      --bg:#0a0d14; --bg-elev-1:#121622; --bg-elev-2:#161b2e; --bg-elev-3:#0e1220;
+      --border:#1e2740; --border-soft:#141a2e;
+      --text:#e8eef6; --text-dim:#8894ad; --text-faint:#4a5572;
+      --accent:#5b8dee; --accent-dim:#2a4ea0; --accent-dark:#132654;
+      --accent-glow:rgba(91,141,238,.35);
+      --gold:#e0b853; --warn:#d6a647; --err:#ff5577; --ok:#6fcf7a;
+    }
+    html[data-theme="forest"] {
+      --bg:#0a1210; --bg-elev-1:#121a17; --bg-elev-2:#162220; --bg-elev-3:#0d1614;
+      --border:#1f3a32; --border-soft:#152821;
+      --text:#e8f3ee; --text-dim:#7fa094; --text-faint:#4a6a5e;
+      --accent:#4ade80; --accent-dim:#1b8a4b; --accent-dark:#0b3a1f;
+      --accent-glow:rgba(74,222,128,.3);
+      --gold:#d4a84a; --warn:#d6a647; --err:#ff5577; --ok:#4ade80;
+    }
+    html[data-theme="amethyst"] {
+      --bg:#0e0a14; --bg-elev-1:#161020; --bg-elev-2:#1c1328; --bg-elev-3:#120c1b;
+      --border:#352350; --border-soft:#231634;
+      --text:#eee8f5; --text-dim:#9d8db2; --text-faint:#5a4a70;
+      --accent:#a855f7; --accent-dim:#6b2eb3; --accent-dark:#2e1152;
+      --accent-glow:rgba(168,85,247,.35);
+      --gold:#e0b853; --warn:#d6a647; --err:#ff5577; --ok:#6fcf7a;
+    }
+    html[data-theme="sunset"] {
+      --bg:#120c08; --bg-elev-1:#1c130b; --bg-elev-2:#241810; --bg-elev-3:#160e08;
+      --border:#4a2e18; --border-soft:#2e1d0f;
+      --text:#f5ece0; --text-dim:#b8977a; --text-faint:#705a45;
+      --accent:#f97316; --accent-dim:#b8530a; --accent-dark:#4a200a;
+      --accent-glow:rgba(249,115,22,.35);
+      --gold:#e0b853; --warn:#d6a647; --err:#ff5577; --ok:#6fcf7a;
+    }
+    html[data-theme="mono"] {
+      --bg:#0a0a0a; --bg-elev-1:#141414; --bg-elev-2:#1c1c1c; --bg-elev-3:#0e0e0e;
+      --border:#2a2a2a; --border-soft:#1e1e1e;
+      --text:#f0f0f0; --text-dim:#909090; --text-faint:#555555;
+      --accent:#ffffff; --accent-dim:#aaaaaa; --accent-dark:#444444;
+      --accent-glow:rgba(255,255,255,.2);
+      --gold:#d6a647; --warn:#d6a647; --err:#ff5577; --ok:#6fcf7a;
+    }
+
+    /* ========== BASE ========== */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { font-size:115%; }
+    body {
+      width:100%; height:100vh; background:var(--bg);
+      font-family: var(--ui-font, 'Inter'), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      color:var(--text); line-height:1.5;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      overflow:hidden; position:relative;
+    }
+    /* custom background layer */
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: -1;
+      background-image: var(--bg-image, none);
+      background-size: cover; background-position: center;
+      opacity: var(--bg-opacity, 0.25);
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: -1;
+      background: var(--bg);
+      opacity: var(--bg-image-dim, 0);
+      pointer-events: none;
+    }
+
+    .app { display:flex; flex-direction:column; width:100%; height:100vh; overflow:hidden; position:relative; z-index:1; background:transparent; }
+
+    /* ========== TITLEBAR ========== */
+    .titlebar {
+      height:40px; flex-shrink:0; background:var(--bg-elev-3);
+      border-bottom:1px solid var(--border); display:flex; align-items:center;
+      padding-left:14px; user-select:none; z-index:10; position:relative;
+      -webkit-app-region:drag;
+    }
+    .titlebar .brand {
+      position:absolute; left:50%; transform:translateX(-50%);
+      font-size:0.9rem; font-weight:400; letter-spacing:0.22em;
+      color:var(--text); pointer-events:none; text-transform:uppercase;
+    }
+    .titlebar .brand::first-letter { color:var(--accent); }
+
+    .attach-status {
+      display:flex; align-items:center; gap:7px; font-size:0.7rem;
+      color:var(--text-dim); margin-left:6px; -webkit-app-region:no-drag;
+      letter-spacing:0.05em;
+    }
+    .attach-status .dot {
+      width:8px; height:8px; border-radius:50%; background:var(--accent-dark);
+      transition: background .25s ease, box-shadow .25s ease;
+    }
+    .attach-status.attached .dot {
+      background:var(--accent);
+      box-shadow:0 0 8px var(--accent-glow), 0 0 2px var(--accent);
+    }
+    .attach-status.attached span { color:var(--text); }
+    .attach-game { font-size:0.65rem; color:var(--text-faint); margin-left:6px; }
+
+    .window-controls {
+      display:flex; height:100%; align-items:stretch;
+      margin-left:auto; z-index:1; -webkit-app-region:no-drag;
+    }
+    .window-controls button {
+      width:48px; height:100%; background:transparent; border:none;
+      color:var(--text); display:flex; align-items:center; justify-content:center;
+      cursor:default; transition:background 0.1s ease; outline:none; padding:0;
+    }
+    .window-controls button:hover { background:var(--bg-elev-2); }
+    .window-controls .close:hover { background:var(--accent); color:#fff; }
+    .window-controls svg { width:10px; height:10px; stroke:currentColor; stroke-width:1; fill:none; }
+
+    .workspace { flex:1; display:flex; min-height:0; overflow:hidden; }
+
+    /* ========== SIDEBAR ========== */
+    .sidebar {
+      width:210px; flex-shrink:0; background:var(--bg-elev-1);
+      border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden;
+    }
+    .sidebar .explorer-title {
+      font-size:0.65rem; font-weight:600; letter-spacing:0.18em;
+      text-transform:uppercase; color:var(--text-dim);
+      padding:12px 14px 8px 14px; user-select:none;
+    }
+    .sidebar .search { padding:4px 10px 8px 10px; border-bottom:1px solid var(--border-soft); flex-shrink:0; position:relative; }
+    .sidebar .search .search-icon {
+      position:absolute; left:20px; top:50%; transform:translateY(-50%);
+      width:16px; height:16px; stroke:var(--text-faint); fill:none;
+      stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; margin-top:-2px;
+    }
+    .sidebar .search input {
+      width:100%; background:var(--bg-elev-2); border:1px solid var(--border);
+      border-radius:4px; color:var(--text); font-family:inherit;
+      font-size:0.75rem; padding:5px 10px 5px 34px; outline:none;
+    }
+    .sidebar .search input::placeholder { color:var(--text-faint); }
+    .sidebar .search input:focus { border-color:var(--accent); }
+
+    .file-list { flex:1; overflow-y:auto; padding:4px 0 8px 0; }
+    .file-list ul { list-style:none; }
+    .file-list .ex-group { user-select:none; width:100%; margin-bottom:6px; }
+    .file-list .ex-group .group-head {
+      display:flex; align-items:center; gap:5px;
+      width:100%; height:24px; padding:0 10px 0 8px; cursor:pointer; border-radius:3px;
+    }
+    .file-list .ex-group .group-head:hover { background:var(--bg-elev-2); }
+    .file-list .ex-group .group-head .chevron {
+      width:14px; height:14px; stroke:var(--text-dim); fill:none; stroke-width:2;
+      stroke-linecap:round; stroke-linejoin:round; transition:transform 0.12s ease;
+    }
+    .file-list .ex-group .group-head .group-icon {
+      width:15px; height:15px; stroke:var(--text); fill:none; stroke-width:1.5;
+      stroke-linecap:round; stroke-linejoin:round;
+    }
+    .file-list .ex-group .group-label { font-size:0.84rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .file-list .ex-group .group-items { padding:1px 0 4px 0; }
+    .file-list .ex-group.collapsed .group-head .chevron { transform:rotate(-90deg); }
+    .file-list .ex-group.collapsed .group-items { display:none; }
+    .file-list .ex-group .group-items li {
+      padding:3px 10px 3px 48px; font-size:0.78rem; color:var(--text-dim);
+      cursor:pointer; border-radius:3px; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis;
+    }
+    .file-list .ex-group .group-items li:hover { background:var(--bg-elev-2); color:var(--text); }
+
+    .editor-column { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; }
+
+    /* ========== TABS ========== */
+    .tab-bar {
+      height:42px; flex-shrink:0; background:var(--bg);
+      border-bottom:1px solid var(--border); display:flex; align-items:stretch;
+      overflow-x:auto; overflow-y:hidden; user-select:none;
+    }
+    .tab-bar::-webkit-scrollbar { height:0; }
+    .tab {
+      display:flex; align-items:center; gap:8px; padding:0 12px 0 14px;
+      height:100%; font-size:0.78rem; color:var(--text-dim); background:var(--bg);
+      border-right:1px solid var(--border-soft); cursor:pointer; flex-shrink:0;
+      position:relative; max-width:200px;
+    }
+    .tab:hover { background:var(--bg-elev-1); color:var(--text); }
+    .tab.active { background:var(--bg-elev-1); color:var(--text); }
+    .tab.active::after {
+      content:''; position:absolute; left:0; right:0; bottom:0;
+      height:2px; background:var(--accent); box-shadow:0 0 6px var(--accent-glow);
+    }
+    .tab.dirty .tab-label::before {
+      content:'●'; color:var(--accent); margin-right:6px; font-size:0.7em; opacity:0.9;
+    }
+    .tab .tab-icon { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; opacity:0.6; }
+    .tab.active .tab-icon { opacity:1; color:var(--accent); }
+    .tab .tab-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+    .tab .tab-close {
+      width:18px; height:18px; background:transparent; border:none;
+      border-radius:3px; color:inherit; display:flex; align-items:center;
+      justify-content:center; cursor:pointer; padding:0; opacity:0.4;
+    }
+    .tab .tab-close:hover { opacity:1; background:var(--accent-dim); }
+    .tab .tab-close svg { width:9px; height:9px; stroke:currentColor; stroke-width:1.5; fill:none; stroke-linecap:round; }
+    .tab .tab-rename-input {
+      background:var(--bg-elev-2); border:1px solid var(--accent); border-radius:2px;
+      color:var(--text); font-family:inherit; font-size:0.78rem;
+      padding:2px 4px; outline:none; width:100%; min-width:60px;
+    }
+    .tab-bar .add-tab {
+      width:34px; flex-shrink:0; display:flex; align-items:center;
+      justify-content:center; background:transparent; border:none;
+      color:var(--text-dim); cursor:pointer; padding:0;
+    }
+    .tab-bar .add-tab:hover { background:var(--bg-elev-1); color:var(--accent); }
+    .tab-bar .add-tab svg { width:13px; height:13px; stroke:currentColor; stroke-width:1.5; fill:none; stroke-linecap:round; }
+
+    /* ========== EDITOR ========== */
+    .editor { flex:1; background:var(--bg); min-height:0; position:relative; overflow:hidden; }
+    #monaco-editor { position:absolute; inset:0; }
+
+    /* ========== FLOATING TOOLBAR ========== */
+    .floating-toolbar {
+      position:absolute; top:16px; right:16px; z-index:20;
+      display:flex; align-items:center; gap:2px; padding:4px;
+      background:var(--bg-elev-2); border:1px solid var(--border);
+      border-radius:8px; user-select:none;
+      box-shadow:0 4px 16px rgba(0,0,0,0.4);
+    }
+    .floating-toolbar.dragging { cursor:grabbing; }
+    .floating-toolbar .drag-handle {
+      display:flex; align-items:center; justify-content:center;
+      width:20px; height:32px; color:var(--text-faint); cursor:grab; flex-shrink:0;
+    }
+    .floating-toolbar .drag-handle svg { width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.5; }
+    .floating-toolbar .toolbar-btn {
+      width:34px; height:34px; background:transparent; border:none;
+      border-radius:6px; color:var(--text-dim); display:flex; align-items:center;
+      justify-content:center; cursor:pointer; padding:0;
+      transition: background 0.1s ease, color 0.1s ease;
+      position:relative;
+    }
+    .floating-toolbar .toolbar-btn:hover { background:var(--bg-elev-3); color:var(--text); }
+    .floating-toolbar .toolbar-btn.run:hover { color:var(--accent); }
+    .floating-toolbar .toolbar-btn.inject:hover { color:var(--accent); background:var(--accent-dark); }
+    .floating-toolbar .toolbar-btn.kill:hover { color:var(--err); }
+    .floating-toolbar .toolbar-btn.inject.attached { color:var(--ok); }
+    .floating-toolbar .toolbar-btn svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+    .floating-toolbar .toolbar-btn.run svg polygon { fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round; }
+    .floating-toolbar .divider { width:1px; height:18px; background:var(--border); margin:0 2px; flex-shrink:0; }
+
+    /* ========== CONSOLE ========== */
+    .console { height:200px; flex-shrink:0; background:var(--bg-elev-1); border-top:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+    .console-header { height:36px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:0 12px 0 16px; user-select:none; }
+    .console-header .tab-title { font-size:0.7rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-dim); font-weight:600; }
+    .console-tools { display:flex; align-items:center; gap:4px; }
+    .console-tools .tool-btn {
+      width:26px; height:26px; background:transparent; border:none;
+      border-radius:3px; color:var(--text-dim); display:flex; align-items:center;
+      justify-content:center; cursor:pointer; padding:0;
+    }
+    .console-tools .tool-btn:hover { background:var(--bg-elev-2); color:var(--text); }
+    .console-tools .tool-btn svg { width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+    .console-body {
+      flex:1; overflow-y:auto; padding:8px 14px;
+      font-family:'JetBrains Mono', Consolas, monospace;
+      font-size:0.75rem; line-height:1.7; color:var(--text-dim);
+    }
+    .console-body .log-line { white-space:pre-wrap; display:flex; gap:10px; }
+    .console-body .log-line .time { color:var(--text-faint); flex-shrink:0; }
+    .console-body .log-line .msg { flex:1; }
+    .log-line.ok { color:var(--gold); }
+    .log-line.warn { color:var(--warn); }
+    .log-line.err { color:var(--err); }
+
+    /* ========== STATUSBAR ========== */
+    .statusbar {
+      height:24px; flex-shrink:0; background:var(--bg-elev-3);
+      border-top:1px solid var(--border); display:flex; align-items:center;
+      justify-content:flex-end; font-size:0.7rem; color:var(--text-dim);
+      padding:0 8px; user-select:none;
+    }
+    .statusbar .item { padding:0 8px; }
+    .statusbar .item:first-child { color:var(--accent); }
+
+    /* ========== TOAST ========== */
+    #toast-container {
+      position:fixed; top:54px; right:16px; z-index:1000;
+      display:flex; flex-direction:column; gap:8px; pointer-events:none;
+    }
+    .toast {
+      background:var(--bg-elev-2); border:1px solid var(--border);
+      border-left:3px solid var(--accent); color:var(--text);
+      padding:10px 16px; border-radius:6px; font-size:0.78rem;
+      min-width:200px; max-width:340px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.5);
+      animation: toast-in 0.2s ease-out; pointer-events:auto;
+    }
+    .toast.ok   { border-left-color:var(--ok); }
+    .toast.err  { border-left-color:var(--err); }
+    .toast.warn { border-left-color:var(--warn); }
+    .toast.out  { animation: toast-out 0.2s ease-in forwards; }
+    @keyframes toast-in { from { transform:translateX(16px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+    @keyframes toast-out { to { transform:translateX(16px); opacity:0; } }
+
+    /* ========== CONTEXT MENU ========== */
+    .context-menu {
+      position:fixed; z-index:2000; background:var(--bg-elev-2);
+      border:1px solid var(--border); border-radius:6px; padding:4px;
+      min-width:180px; box-shadow:0 8px 24px rgba(0,0,0,0.6); font-size:0.78rem;
+    }
+    .context-menu .cm-item {
+      padding:6px 12px; cursor:pointer; border-radius:3px;
+      color:var(--text); display:flex; justify-content:space-between;
+      align-items:center; gap:12px;
+    }
+    .context-menu .cm-item:hover { background:var(--accent-dim); }
+    .context-menu .cm-item.danger:hover { background:var(--err); color:white; }
+    .context-menu .cm-item .shortcut { color:var(--text-faint); font-size:0.72rem; font-family:'JetBrains Mono', monospace; }
+    .context-menu .cm-sep { height:1px; background:var(--border); margin:4px 2px; }
+
+    /* ========== MODAL ========== */
+    .modal-overlay {
+      position:fixed; inset:0; z-index:5000;
+      background:rgba(0,0,0,0.65); backdrop-filter:blur(3px);
+      display:none; align-items:center; justify-content:center;
+    }
+    .modal-overlay.open { display:flex; animation: fade-in 0.15s ease-out; }
+    @keyframes fade-in { from { opacity:0; } to { opacity:1; } }
+    .modal {
+      background:var(--bg-elev-1); border:1px solid var(--border);
+      border-radius:10px; width:680px; max-height:80vh;
+      box-shadow:0 20px 60px rgba(0,0,0,0.7);
+      display:flex; overflow:hidden;
+    }
+    .modal-nav {
+      width:160px; flex-shrink:0; padding:20px 0;
+      background:var(--bg-elev-3); border-right:1px solid var(--border);
+    }
+    .modal-nav .nav-title {
+      font-size:0.65rem; font-weight:600; letter-spacing:0.18em;
+      text-transform:uppercase; color:var(--text-dim);
+      padding:0 20px 12px 20px;
+    }
+    .modal-nav .nav-title::first-letter { color:var(--accent); }
+    .modal-nav .nav-item {
+      padding:8px 20px; cursor:pointer; color:var(--text-dim);
+      font-size:0.82rem; border-left:2px solid transparent;
+      transition: all 0.1s ease;
+    }
+    .modal-nav .nav-item:hover { color:var(--text); background:var(--bg-elev-2); }
+    .modal-nav .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--bg-elev-2); }
+
+    .modal-body { flex:1; padding:24px 28px; overflow-y:auto; }
+    .modal-body h3 {
+      font-size:0.82rem; font-weight:500; color:var(--text);
+      margin-bottom:16px; letter-spacing:0.02em;
+    }
+    .modal-body .section { display:none; }
+    .modal-body .section.active { display:block; }
+    .setting-row {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 0; border-bottom:1px solid var(--border-soft); font-size:0.82rem;
+    }
+    .setting-row:last-child { border-bottom:none; }
+    .setting-hint { color:var(--text-dim); font-size:0.7rem; margin-top:2px; }
+    .setting-row input[type="number"], .setting-row input[type="text"], .setting-row select {
+      background:var(--bg-elev-2); border:1px solid var(--border);
+      color:var(--text); border-radius:4px; padding:5px 8px;
+      font-family:inherit; outline:none; font-size:0.78rem;
+    }
+    .setting-row input[type="number"] { width:70px; }
+    .setting-row input[type="text"] { width:180px; }
+    .setting-row select { width:180px; cursor:pointer; }
+    .setting-row input:focus, .setting-row select:focus { border-color:var(--accent); }
+    .setting-row input[type="range"] { width:160px; accent-color:var(--accent); }
+    .toggle {
+      position:relative; width:36px; height:20px;
+      background:var(--border); border-radius:10px; cursor:pointer;
+      transition: background 0.2s ease; flex-shrink:0;
+    }
+    .toggle::after {
+      content:''; position:absolute; left:2px; top:2px;
+      width:16px; height:16px; background:var(--text); border-radius:50%;
+      transition: transform 0.2s ease;
+    }
+    .toggle.on { background:var(--accent); }
+    .toggle.on::after { transform:translateX(16px); }
+
+    .theme-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:8px; }
+    .theme-card {
+      cursor:pointer; padding:10px; border-radius:6px;
+      border:1px solid var(--border); background:var(--bg-elev-2);
+      text-align:center; font-size:0.72rem;
+      transition: border 0.1s ease;
+    }
+    .theme-card:hover { border-color:var(--accent); }
+    .theme-card.active { border-color:var(--accent); background:var(--bg-elev-3); }
+    .theme-card .swatch {
+      display:flex; gap:3px; margin-bottom:6px; justify-content:center;
+    }
+    .theme-card .swatch div { width:20px; height:20px; border-radius:3px; }
+
+    .bg-upload {
+      border:1px dashed var(--border); border-radius:6px; padding:16px;
+      text-align:center; color:var(--text-dim); cursor:pointer; font-size:0.78rem;
+      margin-top:8px; transition: border 0.1s ease;
+    }
+    .bg-upload:hover { border-color:var(--accent); color:var(--text); }
+
+    /* ========== AI PANEL ========== */
+    .ai-panel {
+      position:fixed; top:40px; right:-420px; bottom:24px; width:420px;
+      background:var(--bg-elev-1); border-left:1px solid var(--border);
+      z-index:100; display:flex; flex-direction:column;
+      transition: right 0.25s ease;
+      box-shadow:-8px 0 24px rgba(0,0,0,0.4);
+    }
+    .ai-panel.open { right:0; }
+    .ai-header {
+      padding:14px 16px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .ai-header h3 {
+      font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase;
+      color:var(--text-dim); font-weight:600;
+    }
+    .ai-header h3::first-letter { color:var(--accent); }
+    .ai-close {
+      background:transparent; border:none; color:var(--text-dim); cursor:pointer;
+      padding:4px; border-radius:3px;
+    }
+    .ai-close:hover { color:var(--text); background:var(--bg-elev-2); }
+    .ai-messages {
+      flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px;
+    }
+    .ai-msg {
+      padding:10px 12px; border-radius:6px; font-size:0.8rem;
+      line-height:1.5; max-width:92%;
+    }
+    .ai-msg.user { background:var(--accent-dim); color:white; align-self:flex-end; }
+    .ai-msg.assistant { background:var(--bg-elev-2); border:1px solid var(--border); align-self:flex-start; }
+    .ai-msg pre {
+      background:var(--bg); border:1px solid var(--border); border-radius:4px;
+      padding:8px; margin:6px 0; overflow-x:auto;
+      font-family:'JetBrains Mono', monospace; font-size:0.72rem;
+    }
+    .ai-msg .insert-btn {
+      background:var(--accent-dim); border:1px solid var(--accent); color:var(--text);
+      font-family:inherit; font-size:0.7rem; padding:3px 10px; border-radius:3px;
+      cursor:pointer; margin-top:4px;
+    }
+    .ai-msg .insert-btn:hover { background:var(--accent); }
+    .ai-input-area { padding:12px 14px; border-top:1px solid var(--border); }
+    .ai-input-area textarea {
+      width:100%; background:var(--bg-elev-2); border:1px solid var(--border);
+      border-radius:4px; color:var(--text); padding:8px 10px; outline:none;
+      font-family:inherit; font-size:0.8rem; resize:none; min-height:56px;
+    }
+    .ai-input-area textarea:focus { border-color:var(--accent); }
+    .ai-input-area .ai-actions { display:flex; gap:6px; margin-top:8px; }
+    .ai-input-area button {
+      flex:1; background:var(--accent-dim); border:1px solid var(--accent);
+      color:var(--text); padding:6px 12px; border-radius:4px; cursor:pointer;
+      font-family:inherit; font-size:0.75rem; font-weight:500;
+    }
+    .ai-input-area button:hover { background:var(--accent); }
+    .ai-input-area button.secondary { background:var(--bg-elev-2); border-color:var(--border); }
+    .ai-input-area button.secondary:hover { background:var(--bg-elev-3); }
+
+    .button-row {
+      display:flex; gap:8px; justify-content:flex-end;
+      padding:16px 28px; border-top:1px solid var(--border);
+    }
+    .button-row button {
+      background:var(--bg-elev-2); border:1px solid var(--border); color:var(--text);
+      padding:6px 16px; border-radius:4px; cursor:pointer;
+      font-family:inherit; font-size:0.78rem;
+    }
+    .button-row button:hover { background:var(--bg-elev-3); }
+    .button-row button.primary { background:var(--accent-dim); border-color:var(--accent); }
+    .button-row button.primary:hover { background:var(--accent); }
+
+    ::-webkit-scrollbar { width:8px; height:8px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--accent-dim); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="titlebar">
+      <div class="attach-status" id="attach-status">
+        <div class="dot"></div>
+        <span id="attach-text">not attached</span>
+      </div>
+      <span class="attach-game" id="attach-game"></span>
+      <span class="brand">Vesper</span>
+      <div class="window-controls">
+        <button class="minimize" onclick="bridge('window.minimize')"><svg viewBox="0 0 10 10"><line x1="0" y1="5" x2="10" y2="5"/></svg></button>
+        <button class="maximize" onclick="bridge('window.maximize')"><svg viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9"/></svg></button>
+        <button class="close" onclick="bridge('window.close')"><svg viewBox="0 0 10 10"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg></button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <div class="explorer-title">Explorer</div>
+        <div class="search">
+          <svg class="search-icon" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg>
+          <input id="file-search" type="text" placeholder="Search files…"/>
+        </div>
+        <div class="file-list">
+          <div class="ex-group" id="ex-workspace">
+            <div class="group-head"><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg class="group-icon" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+              <span class="group-label">Workspace</span></div>
+            <ul class="group-items" id="list-workspace"></ul>
+          </div>
+          <div class="ex-group" id="ex-autoexec">
+            <div class="group-head"><svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg class="group-icon" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+              <span class="group-label">Autoexec</span></div>
+            <ul class="group-items" id="list-autoexec"></ul>
+          </div>
+        </div>
+      </aside>
+
+      <div class="editor-column">
+        <div class="tab-bar" id="tab-bar">
+          <button class="add-tab" id="add-tab" title="New file (Ctrl+N)"><svg viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/></svg></button>
+        </div>
+
+        <main class="editor">
+          <div id="monaco-editor"></div>
+          <div class="floating-toolbar" id="floating-toolbar">
+            <div class="drag-handle" id="drag-handle"><svg viewBox="0 0 24 24">
+              <circle cx="9" cy="6" r="1" fill="currentColor" stroke="none"/>
+              <circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/>
+              <circle cx="9" cy="18" r="1" fill="currentColor" stroke="none"/>
+              <circle cx="15" cy="6" r="1" fill="currentColor" stroke="none"/>
+              <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/>
+              <circle cx="15" cy="18" r="1" fill="currentColor" stroke="none"/>
+            </svg></div>
+            <button class="toolbar-btn run" id="btn-run" title="Execute (F5)"><svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
+            <button class="toolbar-btn" id="btn-save" title="Save (Ctrl+S)"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
+            <button class="toolbar-btn" id="btn-clear" title="Clear editor"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+            <div class="divider"></div>
+            <button class="toolbar-btn inject" id="btn-launch" title="Launch Roblox (Early Bird — most stealthy, Ctrl+L)">
+              <svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+            </button>
+            <button class="toolbar-btn inject" id="btn-inject" title="Inject (into already-running Roblox, Ctrl+I)">
+              <svg viewBox="0 0 24 24"><path d="m18 2 4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/><path d="m14 4 6 6"/></svg>
+            </button>
+            <button class="toolbar-btn kill" id="btn-kill" title="Kill Roblox (Ctrl+K)">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </button>
+            <div class="divider"></div>
+            <button class="toolbar-btn" id="btn-ai" title="AI Assistant (Ctrl+/)">
+              <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-10 10c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.15-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.84-2.34 4.68-4.57 4.93.36.31.69.92.69 1.85V21c0 .27.16.59.67.5A10 10 0 0 0 22 12 10 10 0 0 0 12 2z"/></svg>
+            </button>
+            <button class="toolbar-btn" id="btn-settings" title="Settings (Ctrl+,)">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+        </main>
+
+        <section class="console">
+          <div class="console-header">
+            <span class="tab-title">Output</span>
+            <div class="console-tools">
+              <button class="tool-btn" id="scroll-bottom" title="Scroll to bottom"><svg viewBox="0 0 16 16"><line x1="8" y1="3" x2="8" y2="12"/><polyline points="4.5 9 8 12.5 11.5 9"/></svg></button>
+              <button class="tool-btn" id="clear-console" title="Clear console"><svg viewBox="0 0 16 16"><path d="M3 5h10"/><path d="M11 5v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5"/></svg></button>
+            </div>
+          </div>
+          <div class="console-body" id="console-body"></div>
+        </section>
+      </div>
+    </div>
+
+    <footer class="statusbar">
+      <div class="item" id="cursor-pos">Ln 1, Col 1</div>
+      <div class="item">UTF-8</div>
+      <div class="item">Luau</div>
+    </footer>
+  </div>
+
+  <!-- AI chat panel -->
+  <aside class="ai-panel" id="ai-panel">
+    <div class="ai-header">
+      <h3>AI Assistant</h3>
+      <button class="ai-close" id="ai-close"><svg width="14" height="14" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="1" x2="9" y2="9"/><line x1="9" y1="1" x2="1" y2="9"/></svg></button>
+    </div>
+    <div class="ai-messages" id="ai-messages"></div>
+    <div class="ai-input-area">
+      <textarea id="ai-input" placeholder="Ask AI to generate a script... (e.g. 'make an ESP for players')"></textarea>
+      <div class="ai-actions">
+        <button id="ai-send">Generate</button>
+        <button class="secondary" id="ai-clear">Clear</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- settings modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+      <div class="modal-nav">
+        <div class="nav-title">Settings</div>
+        <div class="nav-item active" data-section="appearance">Appearance</div>
+        <div class="nav-item" data-section="editor">Editor</div>
+        <div class="nav-item" data-section="automation">Automation</div>
+        <div class="nav-item" data-section="performance">Performance</div>
+        <div class="nav-item" data-section="ai">AI</div>
+        <div class="nav-item" data-section="session">Session</div>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <div class="modal-body">
+          <div class="section active" data-section="appearance">
+            <h3>Theme</h3>
+            <div class="theme-grid" id="theme-grid"></div>
+            <h3 style="margin-top:20px">Background Image</h3>
+            <div class="bg-upload" id="bg-upload">Click to upload an image (or drop one here)</div>
+            <input type="file" id="bg-file" accept="image/*" style="display:none"/>
+            <div class="setting-row">
+              <div>Background Opacity<div class="setting-hint">How visible the custom image is</div></div>
+              <input type="range" id="s-bg-opacity" min="0" max="100" value="25"/>
+            </div>
+            <div class="setting-row">
+              <div>Clear Background<div class="setting-hint">Remove the custom image</div></div>
+              <button class="ai-close" id="s-bg-clear" style="padding:4px 12px; background:var(--bg-elev-2); border:1px solid var(--border); border-radius:4px;">Clear</button>
+            </div>
+            <h3 style="margin-top:20px">UI Font</h3>
+            <div class="setting-row">
+              <div>Font Family<div class="setting-hint">Changes the entire interface font</div></div>
+              <select id="s-ui-font">
+                <option value="Inter">Inter (default)</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+                <option value="Geist">Geist</option>
+                <option value="Segoe UI">Segoe UI</option>
+                <option value="system-ui">System</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section" data-section="editor">
+            <h3>Editor</h3>
+            <div class="setting-row">
+              <div>Font Size<div class="setting-hint">Editor font size in pixels</div></div>
+              <input type="number" id="s-font-size" min="10" max="28" value="15"/>
+            </div>
+            <div class="setting-row">
+              <div>Editor Font<div class="setting-hint">Monospace font for code</div></div>
+              <select id="s-editor-font">
+                <option value="JetBrains Mono">JetBrains Mono (default)</option>
+                <option value="Consolas">Consolas</option>
+                <option value="Fira Code">Fira Code</option>
+                <option value="Cascadia Code">Cascadia Code</option>
+                <option value="Monaco">Monaco</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <div>Minimap<div class="setting-hint">Show code overview on the right</div></div>
+              <div class="toggle on" id="s-minimap"></div>
+            </div>
+            <div class="setting-row">
+              <div>Word Wrap<div class="setting-hint">Wrap long lines</div></div>
+              <div class="toggle" id="s-wrap"></div>
+            </div>
+            <div class="setting-row">
+              <div>Line Numbers<div class="setting-hint">Show line numbers in the gutter</div></div>
+              <div class="toggle on" id="s-linenums"></div>
+            </div>
+          </div>
+
+          <div class="section" data-section="automation">
+            <h3>Automation</h3>
+            <div class="setting-row">
+              <div>Auto-Inject<div class="setting-hint">Inject automatically when Roblox is detected</div></div>
+              <div class="toggle" id="s-autoinject"></div>
+            </div>
+            <div class="setting-row">
+              <div>Auto-Execute<div class="setting-hint">Run everything in /autoexec/ after injection</div></div>
+              <div class="toggle" id="s-autoexec"></div>
+            </div>
+            <div class="setting-row">
+              <div>Rejoin on Disconnect<div class="setting-hint">Auto-rejoin last server if kicked</div></div>
+              <div class="toggle" id="s-rejoin"></div>
+            </div>
+            <div class="setting-row">
+              <div>Anti-AFK<div class="setting-hint">Prevent idle disconnects in Roblox</div></div>
+              <div class="toggle" id="s-antiafk"></div>
+            </div>
+          </div>
+
+          <div class="section" data-section="performance">
+            <h3>Roblox Performance</h3>
+            <div class="setting-row">
+              <div>FPS Uncap<div class="setting-hint">Remove Roblox's 60 FPS limit</div></div>
+              <div class="toggle" id="s-fpsuncap"></div>
+            </div>
+            <div class="setting-row">
+              <div>Target FPS<div class="setting-hint">Only used when uncap is on (0 = unlimited)</div></div>
+              <input type="number" id="s-fpstarget" min="0" max="999" value="240"/>
+            </div>
+            <div class="setting-row">
+              <div>Multi-Instance<div class="setting-hint">Allow multiple Roblox clients to run at once</div></div>
+              <div class="toggle" id="s-multi"></div>
+            </div>
+            <div class="setting-row">
+              <div>RAM Limit (MB)<div class="setting-hint">Cap Roblox's memory (0 = no limit)</div></div>
+              <input type="number" id="s-ramlimit" min="0" max="16384" step="512" value="0"/>
+            </div>
+            <div class="setting-row">
+              <div>CPU Priority<div class="setting-hint">Windows process priority class</div></div>
+              <select id="s-cpupriority">
+                <option value="normal">Normal</option>
+                <option value="above">Above Normal</option>
+                <option value="high">High</option>
+                <option value="low">Below Normal</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section" data-section="ai">
+            <h3>AI Assistant</h3>
+            <div class="setting-row">
+              <div>Backend<div class="setting-hint">Which AI service to use</div></div>
+              <select id="s-ai-backend">
+                <option value="openai">OpenAI (GPT-4o)</option>
+                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="local">Local (LM Studio / Ollama)</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <div>API Key<div class="setting-hint">Stored locally, never sent anywhere else</div></div>
+              <input type="text" id="s-ai-key" placeholder="sk-..." style="width:220px"/>
+            </div>
+            <div class="setting-row">
+              <div>Local Endpoint<div class="setting-hint">For LM Studio / Ollama</div></div>
+              <input type="text" id="s-ai-endpoint" value="http://localhost:1234/v1" style="width:220px"/>
+            </div>
+            <div class="setting-row">
+              <div>Model<div class="setting-hint">Model name for the selected backend</div></div>
+              <input type="text" id="s-ai-model" value="gpt-4o-mini"/>
+            </div>
+          </div>
+
+          <div class="section" data-section="session">
+            <h3>Session</h3>
+            <div class="setting-row">
+              <div>Restore Session<div class="setting-hint">Reopen tabs from your last session</div></div>
+              <div class="toggle on" id="s-restore"></div>
+            </div>
+            <div class="setting-row">
+              <div>Discord Rich Presence<div class="setting-hint">Show "Executing in Roblox" on your profile</div></div>
+              <div class="toggle" id="s-discord"></div>
+            </div>
+            <div class="setting-row">
+              <div>Auto-Update<div class="setting-hint">Check for new offsets on startup</div></div>
+              <div class="toggle on" id="s-autoupdate"></div>
+            </div>
+          </div>
+        </div>
+        <div class="button-row">
+          <button onclick="closeSettings()">Close</button>
+          <button class="primary" onclick="applySettings()">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <div class="context-menu" id="context-menu" style="display:none"></div>
+
+  <script>
+    // ========== HOST BRIDGE ==========
+    const HOST = !!(window.chrome && window.chrome.webview && window.chrome.webview.postMessage);
+    const pending = {};
+    let reqId = 0;
+    function bridge(op, data) {
+      return new Promise((resolve) => {
+        const id = ++reqId;
+        pending[id] = resolve;
+        const msg = JSON.stringify({ id, op, data: data || null });
+        if (HOST) window.chrome.webview.postMessage(msg);
+        else setTimeout(() => resolve({ ok: false, reason: 'no-host' }), 0);
+      });
+    }
+    if (HOST) {
+      window.chrome.webview.addEventListener('message', (ev) => {
+        let p; try { p = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data; } catch { return; }
+        if (p.id && pending[p.id]) { pending[p.id](p); delete pending[p.id]; return; }
+        if (p.event === 'log') log(p.level || 'info', p.msg || '');
+        if (p.event === 'attach') setAttached(!!p.attached, p.game);
+      });
+    }
+    window.bridge = bridge;
+
+    // ========== THEMES ==========
+    const THEMES = [
+      { id:'cherry',   name:'Cherry',   swatches:['#d63447','#0e0e10','#8b1a24'] },
+      { id:'midnight', name:'Midnight', swatches:['#5b8dee','#0a0d14','#2a4ea0'] },
+      { id:'forest',   name:'Forest',   swatches:['#4ade80','#0a1210','#1b8a4b'] },
+      { id:'amethyst', name:'Amethyst', swatches:['#a855f7','#0e0a14','#6b2eb3'] },
+      { id:'sunset',   name:'Sunset',   swatches:['#f97316','#120c08','#b8530a'] },
+      { id:'mono',     name:'Mono',     swatches:['#ffffff','#0a0a0a','#444444'] },
+    ];
+
+    function renderThemes() {
+      const grid = document.getElementById('theme-grid');
+      grid.innerHTML = '';
+      THEMES.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'theme-card' + (t.id === settings.theme ? ' active' : '');
+        card.innerHTML = `
+          <div class="swatch">
+            ${t.swatches.map(c => `<div style="background:${c}"></div>`).join('')}
+          </div>
+          <div>${t.name}</div>`;
+        card.addEventListener('click', () => {
+          settings.theme = t.id;
+          document.documentElement.setAttribute('data-theme', t.id);
+          renderThemes();
+        });
+        grid.appendChild(card);
+      });
+    }
+
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+
+    require(['vs/editor/editor.main'], function () {
+      // Monaco theme — reads from CSS vars at load; swapping theme only updates UI, editor keeps its base
+      function buildMonacoColors() {
+        const cs = getComputedStyle(document.documentElement);
+        const v = n => cs.getPropertyValue(n).trim();
+        return {
+          'editor.background': v('--bg'),
+          'editor.foreground': v('--text'),
+          'editorLineNumber.foreground': v('--text-faint'),
+          'editorLineNumber.activeForeground': v('--accent'),
+          'editorCursor.foreground': v('--accent'),
+          'editor.selectionBackground': v('--accent-dark') + '80',
+          'editor.lineHighlightBackground': v('--bg-elev-1'),
+          'editor.lineHighlightBorder': '#00000000',
+          'editorIndentGuide.background': v('--border-soft'),
+          'editorIndentGuide.activeBackground': v('--border'),
+          'editorBracketMatch.background': v('--accent-dark') + '60',
+          'editorBracketMatch.border': v('--accent'),
+          'editorWidget.background': v('--bg-elev-1'),
+          'editorWidget.border': v('--border'),
+          'editorSuggestWidget.background': v('--bg-elev-1'),
+          'editorSuggestWidget.border': v('--border'),
+          'editorSuggestWidget.selectedBackground': v('--accent-dark') + '60',
+          'editorGutter.background': v('--bg'),
+          'minimap.background': v('--bg'),
+          'scrollbarSlider.background': v('--border') + '80',
+          'scrollbarSlider.hoverBackground': v('--accent-dim') + '80',
+        };
+      }
+
+      function defineTheme() {
+        monaco.editor.defineTheme('vesper', {
+          base: 'vs-dark', inherit: true,
+          rules: [
+            { token: 'comment',             foreground: '5a4848', fontStyle: 'italic' },
+            { token: 'keyword',             foreground: 'd63447' },
+            { token: 'string',              foreground: 'c89040' },
+            { token: 'number',              foreground: 'd6a647' },
+            { token: 'identifier',          foreground: 'f0e8e8' },
+            { token: 'function',            foreground: 'e89090' },
+            { token: 'type',                foreground: 'c67080' },
+            { token: 'variable.predefined', foreground: 'd6a647' },
+            { token: 'operator',            foreground: 'b07068' },
+            { token: 'delimiter',           foreground: 'a09494' }
+          ],
+          colors: buildMonacoColors()
+        });
+      }
+      defineTheme();
+
+      monaco.languages.registerCompletionItemProvider('lua', {
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn };
+          const fns = ['getgenv','getrenv','identifyexecutor','getexecutorname','getrawmetatable','setrawmetatable','setreadonly','isreadonly','hookfunction','replaceclosure','newcclosure','checkcaller','loadstring','HttpGet','writefile','readfile','isfile','isfolder','makefolder','delfile','listfiles'];
+          const kw = ['local','function','end','if','then','else','elseif','for','while','do','return','break','continue','repeat','until','and','or','not','true','false','nil','in'];
+          return { suggestions: [
+            ...fns.map(name => ({ label: name, kind: monaco.languages.CompletionItemKind.Function, insertText: name, range })),
+            ...kw.map(name  => ({ label: name, kind: monaco.languages.CompletionItemKind.Keyword, insertText: name, range }))
+          ]};
+        }
+      });
+
+      const monacoEditor = monaco.editor.create(document.getElementById('monaco-editor'), {
+        theme: 'vesper', language: 'lua', automaticLayout: true,
+        fontSize: 15, fontFamily: 'JetBrains Mono', fontLigatures: true,
+        lineNumbers: 'on',
+        minimap: { enabled: true, renderCharacters: false, maxColumn: 80 },
+        scrollBeyondLastLine: false, smoothScrolling: true,
+        cursorBlinking: 'smooth', cursorSmoothCaretAnimation: 'on',
+        padding: { top: 12 }, tabSize: 4, insertSpaces: true,
+        bracketPairColorization: { enabled: false }
+      });
+      window.monacoEditor = monacoEditor;
+
+      // ========== STATE ==========
+      const models = {};
+      const files = [];
+      let activeId = null, nextId = 1, untitledCounter = 1;
+
+      // ========== SETTINGS ==========
+      const SETTINGS_KEY = 'vesper.settings';
+      const SESSION_KEY  = 'vesper.session';
+      const AI_HISTORY_KEY = 'vesper.ai';
+      const defaults = {
+        theme:'cherry', uiFont:'Inter', bgImage:null, bgOpacity:25,
+        fontSize:15, editorFont:'JetBrains Mono',
+        minimap:true, wrap:false, linenums:true,
+        autoinject:false, autoexec:false, rejoin:false, antiafk:false,
+        fpsuncap:false, fpstarget:240, multi:false, ramlimit:0, cpupriority:'normal',
+        aiBackend:'openai', aiKey:'', aiEndpoint:'http://localhost:1234/v1', aiModel:'gpt-4o-mini',
+        restore:true, discord:false, autoupdate:true
+      };
+      let settings = { ...defaults };
+      try { settings = { ...defaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch {}
+
+      function applySettings() {
+        // theme
+        document.documentElement.setAttribute('data-theme', settings.theme);
+        // ui font
+        document.body.style.setProperty('--ui-font', settings.uiFont);
+        // bg image
+        if (settings.bgImage) {
+          document.body.style.setProperty('--bg-image', `url("${settings.bgImage}")`);
+          document.body.style.setProperty('--bg-opacity', settings.bgOpacity / 100);
+        } else {
+          document.body.style.setProperty('--bg-image', 'none');
+        }
+        // editor
+        monacoEditor.updateOptions({
+          fontSize: settings.fontSize,
+          fontFamily: settings.editorFont,
+          minimap: { enabled: settings.minimap, renderCharacters: false, maxColumn: 80 },
+          wordWrap: settings.wrap ? 'on' : 'off',
+          lineNumbers: settings.linenums ? 'on' : 'off'
+        });
+        defineTheme();
+        monaco.editor.setTheme('vesper');
+        // push performance settings to host
+        if (HOST) {
+          bridge('setPerformance', {
+            fpsuncap: settings.fpsuncap, fpstarget: settings.fpstarget,
+            multi: settings.multi, ramlimit: settings.ramlimit,
+            cpupriority: settings.cpupriority,
+            autoinject: settings.autoinject, autoexec: settings.autoexec,
+            rejoin: settings.rejoin, antiafk: settings.antiafk,
+            discord: settings.discord
+          });
+        }
+      }
+
+      window.applySettings = () => {
+        settings.theme = document.documentElement.getAttribute('data-theme');
+        settings.uiFont = document.getElementById('s-ui-font').value;
+        settings.bgOpacity = parseInt(document.getElementById('s-bg-opacity').value);
+        settings.fontSize = parseInt(document.getElementById('s-font-size').value) || 15;
+        settings.editorFont = document.getElementById('s-editor-font').value;
+        settings.minimap = document.getElementById('s-minimap').classList.contains('on');
+        settings.wrap = document.getElementById('s-wrap').classList.contains('on');
+        settings.linenums = document.getElementById('s-linenums').classList.contains('on');
+        settings.autoinject = document.getElementById('s-autoinject').classList.contains('on');
+        settings.autoexec = document.getElementById('s-autoexec').classList.contains('on');
+        settings.rejoin = document.getElementById('s-rejoin').classList.contains('on');
+        settings.antiafk = document.getElementById('s-antiafk').classList.contains('on');
+        settings.fpsuncap = document.getElementById('s-fpsuncap').classList.contains('on');
+        settings.fpstarget = parseInt(document.getElementById('s-fpstarget').value) || 0;
+        settings.multi = document.getElementById('s-multi').classList.contains('on');
+        settings.ramlimit = parseInt(document.getElementById('s-ramlimit').value) || 0;
+        settings.cpupriority = document.getElementById('s-cpupriority').value;
+        settings.aiBackend = document.getElementById('s-ai-backend').value;
+        settings.aiKey = document.getElementById('s-ai-key').value;
+        settings.aiEndpoint = document.getElementById('s-ai-endpoint').value;
+        settings.aiModel = document.getElementById('s-ai-model').value;
+        settings.restore = document.getElementById('s-restore').classList.contains('on');
+        settings.discord = document.getElementById('s-discord').classList.contains('on');
+        settings.autoupdate = document.getElementById('s-autoupdate').classList.contains('on');
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {}
+        applySettings();
+        closeSettings();
+        toast('ok', 'settings saved');
+      };
+
+      function openSettings() {
+        document.getElementById('s-ui-font').value = settings.uiFont;
+        document.getElementById('s-bg-opacity').value = settings.bgOpacity;
+        document.getElementById('s-font-size').value = settings.fontSize;
+        document.getElementById('s-editor-font').value = settings.editorFont;
+        document.getElementById('s-minimap').classList.toggle('on', settings.minimap);
+        document.getElementById('s-wrap').classList.toggle('on', settings.wrap);
+        document.getElementById('s-linenums').classList.toggle('on', settings.linenums);
+        document.getElementById('s-autoinject').classList.toggle('on', settings.autoinject);
+        document.getElementById('s-autoexec').classList.toggle('on', settings.autoexec);
+        document.getElementById('s-rejoin').classList.toggle('on', settings.rejoin);
+        document.getElementById('s-antiafk').classList.toggle('on', settings.antiafk);
+        document.getElementById('s-fpsuncap').classList.toggle('on', settings.fpsuncap);
+        document.getElementById('s-fpstarget').value = settings.fpstarget;
+        document.getElementById('s-multi').classList.toggle('on', settings.multi);
+        document.getElementById('s-ramlimit').value = settings.ramlimit;
+        document.getElementById('s-cpupriority').value = settings.cpupriority;
+        document.getElementById('s-ai-backend').value = settings.aiBackend;
+        document.getElementById('s-ai-key').value = settings.aiKey;
+        document.getElementById('s-ai-endpoint').value = settings.aiEndpoint;
+        document.getElementById('s-ai-model').value = settings.aiModel;
+        document.getElementById('s-restore').classList.toggle('on', settings.restore);
+        document.getElementById('s-discord').classList.toggle('on', settings.discord);
+        document.getElementById('s-autoupdate').classList.toggle('on', settings.autoupdate);
+        renderThemes();
+        document.getElementById('settings-modal').classList.add('open');
+      }
+      window.closeSettings = () => document.getElementById('settings-modal').classList.remove('open');
+
+      document.querySelectorAll('.modal-nav .nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+          document.querySelectorAll('.modal-nav .nav-item').forEach(i => i.classList.remove('active'));
+          document.querySelectorAll('.modal-body .section').forEach(s => s.classList.remove('active'));
+          item.classList.add('active');
+          document.querySelector('.modal-body .section[data-section="' + item.dataset.section + '"]').classList.add('active');
+        });
+      });
+      document.querySelectorAll('.toggle').forEach(t => t.addEventListener('click', () => t.classList.toggle('on')));
+      document.getElementById('settings-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'settings-modal') closeSettings();
+      });
+
+      // ========== BG UPLOAD ==========
+      const bgUpload = document.getElementById('bg-upload');
+      const bgFile = document.getElementById('bg-file');
+      bgUpload.addEventListener('click', () => bgFile.click());
+      bgUpload.addEventListener('dragover', (e) => { e.preventDefault(); bgUpload.style.borderColor = 'var(--accent)'; });
+      bgUpload.addEventListener('dragleave', () => bgUpload.style.borderColor = '');
+      bgUpload.addEventListener('drop', (e) => {
+        e.preventDefault(); bgUpload.style.borderColor = '';
+        if (e.dataTransfer.files[0]) handleBgFile(e.dataTransfer.files[0]);
+      });
+      bgFile.addEventListener('change', (e) => { if (e.target.files[0]) handleBgFile(e.target.files[0]); });
+      function handleBgFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          settings.bgImage = e.target.result;
+          applySettings();
+          toast('ok', 'background set');
+        };
+        reader.readAsDataURL(file);
+      }
+      document.getElementById('s-bg-clear').addEventListener('click', () => {
+        settings.bgImage = null; applySettings(); toast('info', 'background cleared');
+      });
+      document.getElementById('s-bg-opacity').addEventListener('input', (e) => {
+        if (settings.bgImage) document.body.style.setProperty('--bg-opacity', e.target.value / 100);
+      });
+
+      // ========== FILES ==========
+      function addFile(name, content) {
+        const id = nextId++;
+        const file = { id, name: name || ('Untitled ' + (untitledCounter++)), content: content || '' };
+        files.push(file);
+        models[id] = monaco.editor.createModel(file.content, 'lua');
+        return file;
+      }
+      function removeFile(id) {
+        const idx = files.findIndex(f => f.id === id);
+        if (idx === -1) return;
+        files.splice(idx, 1);
+        if (models[id]) { models[id].dispose(); delete models[id]; }
+        if (activeId === id) {
+          if (files.length) setActive(files[Math.min(idx, files.length - 1)].id);
+          else { activeId = null; monacoEditor.setModel(null); }
+        }
+        renderTabs();
+      }
+      function setActive(id) {
+        activeId = id;
+        if (models[id]) { monacoEditor.setModel(models[id]); monacoEditor.focus(); }
+        renderTabs();
+      }
+      function currentSource() {
+        return activeId && models[activeId] ? models[activeId].getValue() : '';
+      }
+      function iconSvg() {
+        return '<svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/></svg>';
+      }
+      function renderTabs() {
+        const bar = document.getElementById('tab-bar');
+        const addBtn = document.getElementById('add-tab');
+        bar.querySelectorAll('.tab').forEach(el => el.remove());
+        files.forEach(file => {
+          const tab = document.createElement('div');
+          tab.className = 'tab' + (file.id === activeId ? ' active' : '');
+          tab.dataset.id = file.id;
+          tab.draggable = true;
+          const iconHolder = document.createElement('span');
+          iconHolder.innerHTML = iconSvg();
+          tab.appendChild(iconHolder.firstChild);
+          const label = document.createElement('span');
+          label.className = 'tab-label';
+          label.textContent = file.name;
+          tab.appendChild(label);
+          const close = document.createElement('button');
+          close.className = 'tab-close';
+          close.innerHTML = '<svg viewBox="0 0 8 8"><line x1="1" y1="1" x2="7" y2="7"/><line x1="7" y1="1" x2="1" y2="7"/></svg>';
+          tab.appendChild(close);
+          // dirty check
+          if (originalContents.has(file.id)) {
+            const orig = originalContents.get(file.id);
+            const cur = models[file.id] ? models[file.id].getValue() : '';
+            if (orig !== cur) tab.classList.add('dirty');
+          }
+          tab.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.tab-close')) return;
+            if (e.detail === 2) { startRename(tab, file); return; }
+            setActive(file.id);
+          });
+          close.addEventListener('click', (e) => { e.stopPropagation(); removeFile(file.id); });
+          tab.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', String(file.id)); tab.classList.add('dragging'); });
+          tab.addEventListener('dragend', () => tab.classList.remove('dragging'));
+          tab.addEventListener('dragover', (e) => { e.preventDefault(); });
+          tab.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const draggedId = Number(e.dataTransfer.getData('text/plain'));
+            if (draggedId === file.id) return;
+            const from = files.findIndex(f => f.id === draggedId);
+            const to = files.findIndex(f => f.id === file.id);
+            if (from === -1 || to === -1) return;
+            const [moved] = files.splice(from, 1);
+            files.splice(to, 0, moved);
+            renderTabs();
+          });
+          bar.insertBefore(tab, addBtn);
+        });
+      }
+      function startRename(tabEl, file) {
+        const label = tabEl.querySelector('.tab-label');
+        const input = document.createElement('input');
+        input.className = 'tab-rename-input';
+        input.value = file.name;
+        label.replaceWith(input);
+        input.focus(); input.select();
+        const finish = (save) => {
+          if (save && input.value.trim()) file.name = input.value.trim();
+          renderTabs();
+        };
+        input.addEventListener('blur', () => finish(true));
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+          if (e.key === 'Escape') { input.value = file.name; input.blur(); }
+        });
+      }
+
+      // ========== DIRTY TRACKING ==========
+      const originalContents = new Map();
+      function markClean(fileId) {
+        if (models[fileId]) originalContents.set(fileId, models[fileId].getValue());
+        renderTabs();
+      }
+      monacoEditor.onDidChangeModelContent(() => { if (activeId) renderTabs(); });
+
+      // ========== CONSOLE ==========
+      const consoleBody = document.getElementById('console-body');
+      function log(level, msg) {
+        const t = new Date().toTimeString().slice(0,8);
+        const line = document.createElement('div');
+        line.className = 'log-line ' + level;
+        const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        line.innerHTML = `<span class="time">${t}</span><span class="msg">${esc(msg)}</span>`;
+        consoleBody.appendChild(line);
+        consoleBody.scrollTop = consoleBody.scrollHeight;
+      }
+      window.log = log;
+      function setAttached(on, game) {
+        const el = document.getElementById('attach-status');
+        el.classList.toggle('attached', on);
+        document.getElementById('attach-text').textContent = on ? 'attached' : 'not attached';
+        document.getElementById('attach-game').textContent = (on && game) ? '· ' + game : '';
+        document.getElementById('btn-inject').classList.toggle('attached', on);
+      }
+      window.setAttached = setAttached;
+
+      // ========== TOAST ==========
+      function toast(level, msg, duration = 2600) {
+        const el = document.createElement('div');
+        el.className = 'toast ' + (level || 'info');
+        el.textContent = msg;
+        document.getElementById('toast-container').appendChild(el);
+        setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, duration);
+      }
+      window.toast = toast;
+
+      // ========== ACTIONS ==========
+      async function doRun() {
+        const src = currentSource();
+        if (!src.trim()) { log('warn', 'nothing to execute'); return; }
+        log('info', 'executing...');
+        const r = await bridge('exec', { source: src });
+        if (!r || !r.ok) log('err', 'execute failed: ' + (r && r.reason || 'unknown'));
+        else log('ok', 'sent (' + src.length + ' bytes)');
+      }
+      async function doSave() {
+        if (!activeId) return;
+        const file = files.find(f => f.id === activeId);
+        const r = await bridge('saveFile', { name: file.name, content: currentSource() });
+        if (r && r.ok) { log('ok', 'saved: ' + file.name); markClean(activeId); }
+        else log('err', 'save failed: ' + (r && r.reason || 'no host'));
+      }
+      async function doInject() {
+        const btn = document.getElementById('btn-inject');
+        btn.disabled = true;
+        log('info', 'injecting vesper into Roblox...');
+        const r = await bridge('inject');
+        btn.disabled = false;
+        if (r && r.ok) { log('ok', 'injected — pipe is live'); toast('ok', 'injected'); }
+        else { log('err', 'injection failed: ' + (r && r.reason || 'unknown')); toast('err', r && r.reason || 'injection failed'); }
+      }
+      async function doLaunch() {
+        const btn = document.getElementById('btn-launch');
+        btn.disabled = true;
+        log('info', 'launching Roblox with Early Bird injection...');
+        const r = await bridge('launchRoblox', { args: '' });
+        btn.disabled = false;
+        if (r && r.ok) { log('ok', 'launched — Early Bird + TLS kill'); toast('ok', 'launched + injected'); }
+        else { log('err', 'launch failed: ' + (r && r.reason || 'unknown')); toast('err', r && r.reason || 'launch failed'); }
+      }
+      async function doKillRoblox() {
+        const r = await bridge('killRoblox');
+        if (r && r.ok) { log('warn', 'killed all Roblox processes'); toast('warn', 'Roblox killed'); }
+        else log('err', 'could not kill Roblox');
+      }
+
+      // ========== AI PANEL ==========
+      const aiPanel = document.getElementById('ai-panel');
+      const aiMessages = document.getElementById('ai-messages');
+      let aiHistory = [];
+      try { aiHistory = JSON.parse(localStorage.getItem(AI_HISTORY_KEY) || '[]'); } catch {}
+
+      function renderAiHistory() {
+        aiMessages.innerHTML = '';
+        aiHistory.forEach(m => appendAiMessage(m.role, m.content, false));
+      }
+      function appendAiMessage(role, content, scroll = true) {
+        const el = document.createElement('div');
+        el.className = 'ai-msg ' + role;
+        if (role === 'assistant') {
+          // extract code blocks
+          const codeMatches = content.match(/```(?:lua|luau)?\n([\s\S]*?)```/g) || [];
+          const cleanText = content.replace(/```(?:lua|luau)?\n[\s\S]*?```/g, '').trim();
+          if (cleanText) el.innerHTML = escapeHtml(cleanText).replace(/\n/g, '<br>');
+          codeMatches.forEach(cb => {
+            const code = cb.replace(/```(?:lua|luau)?\n/, '').replace(/```$/, '');
+            const pre = document.createElement('pre');
+            pre.textContent = code;
+            el.appendChild(pre);
+            const btn = document.createElement('button');
+            btn.className = 'insert-btn';
+            btn.textContent = 'Insert into editor';
+            btn.onclick = () => {
+              const f = addFile('ai-generated.lua', code);
+              renderTabs(); setActive(f.id);
+              toast('ok', 'inserted as new tab');
+            };
+            el.appendChild(btn);
+          });
+        } else {
+          el.textContent = content;
+        }
+        aiMessages.appendChild(el);
+        if (scroll) aiMessages.scrollTop = aiMessages.scrollHeight;
+      }
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+
+      async function sendAiMessage() {
+        const input = document.getElementById('ai-input');
+        const prompt = input.value.trim();
+        if (!prompt) return;
+        if (!settings.aiKey && settings.aiBackend !== 'local') {
+          toast('err', 'set an API key in settings → AI');
+          return;
+        }
+        input.value = '';
+        aiHistory.push({ role:'user', content: prompt });
+        appendAiMessage('user', prompt);
+
+        appendAiMessage('assistant', '...');
+        const thinkingEl = aiMessages.lastChild;
+
+        try {
+          const systemPrompt = "You are a Luau scripting assistant for Roblox exploits. Generate clean, working Luau code. Always wrap code in ```lua ... ``` blocks. Use executor environment functions (getgenv, hookfunction, HttpGet, etc.) where appropriate.";
+          let url, headers, body;
+
+          if (settings.aiBackend === 'openai') {
+            url = 'https://api.openai.com/v1/chat/completions';
+            headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + settings.aiKey };
+            body = JSON.stringify({
+              model: settings.aiModel,
+              messages: [{ role:'system', content: systemPrompt }, ...aiHistory.map(m => ({ role: m.role, content: m.content }))]
+            });
+          } else if (settings.aiBackend === 'anthropic') {
+            url = 'https://api.anthropic.com/v1/messages';
+            headers = { 'Content-Type':'application/json', 'x-api-key': settings.aiKey, 'anthropic-version':'2023-06-01' };
+            body = JSON.stringify({
+              model: settings.aiModel || 'claude-3-5-sonnet-20241022',
+              max_tokens: 2048, system: systemPrompt,
+              messages: aiHistory.map(m => ({ role: m.role, content: m.content }))
+            });
+          } else {
+            url = settings.aiEndpoint + '/chat/completions';
+            headers = { 'Content-Type':'application/json' };
+            body = JSON.stringify({
+              model: settings.aiModel,
+              messages: [{ role:'system', content: systemPrompt }, ...aiHistory.map(m => ({ role: m.role, content: m.content }))]
+            });
+          }
+
+          const res = await fetch(url, { method:'POST', headers, body });
+          const data = await res.json();
+          let text = '';
+          if (settings.aiBackend === 'anthropic') text = data.content?.[0]?.text || JSON.stringify(data);
+          else text = data.choices?.[0]?.message?.content || JSON.stringify(data);
+
+          thinkingEl.remove();
+          aiHistory.push({ role:'assistant', content: text });
+          appendAiMessage('assistant', text);
+          try { localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(aiHistory.slice(-20))); } catch {}
+        } catch (err) {
+          thinkingEl.remove();
+          toast('err', 'AI request failed');
+          log('err', 'AI: ' + err.message);
+        }
+      }
+
+      document.getElementById('btn-ai').addEventListener('click', () => {
+        aiPanel.classList.toggle('open');
+      });
+      document.getElementById('ai-close').addEventListener('click', () => aiPanel.classList.remove('open'));
+      document.getElementById('ai-send').addEventListener('click', sendAiMessage);
+      document.getElementById('ai-clear').addEventListener('click', () => {
+        aiHistory = []; aiMessages.innerHTML = '';
+        try { localStorage.removeItem(AI_HISTORY_KEY); } catch {}
+      });
+      document.getElementById('ai-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiMessage(); }
+      });
+      renderAiHistory();
+
+      // ========== CONTEXT MENU ==========
+      const ctxMenu = document.getElementById('context-menu');
+      function showContextMenu(x, y, items) {
+        ctxMenu.innerHTML = '';
+        items.forEach(it => {
+          if (it.sep) { const s = document.createElement('div'); s.className = 'cm-sep'; ctxMenu.appendChild(s); return; }
+          const el = document.createElement('div');
+          el.className = 'cm-item' + (it.danger ? ' danger' : '');
+          el.innerHTML = `<span>${it.label}</span>` + (it.shortcut ? `<span class="shortcut">${it.shortcut}</span>` : '');
+          el.addEventListener('click', () => { hideContextMenu(); it.onClick(); });
+          ctxMenu.appendChild(el);
+        });
+        ctxMenu.style.display = 'block';
+        const rect = ctxMenu.getBoundingClientRect();
+        ctxMenu.style.left = (x + rect.width > window.innerWidth ? window.innerWidth - rect.width - 4 : x) + 'px';
+        ctxMenu.style.top  = (y + rect.height > window.innerHeight ? window.innerHeight - rect.height - 4 : y) + 'px';
+      }
+      function hideContextMenu() { ctxMenu.style.display = 'none'; }
+      document.addEventListener('click', hideContextMenu);
+      document.addEventListener('contextmenu', (e) => {
+        const tab = e.target.closest('.tab');
+        if (tab) {
+          e.preventDefault();
+          const id = Number(tab.dataset.id);
+          const file = files.find(f => f.id === id);
+          if (!file) return;
+          showContextMenu(e.clientX, e.clientY, [
+            { label: 'Rename', shortcut: 'F2', onClick: () => startRename(tab, file) },
+            { label: 'Duplicate', onClick: () => {
+                const f = addFile(file.name + ' (copy)', models[id].getValue());
+                renderTabs(); setActive(f.id);
+              }},
+            { sep: true },
+            { label: 'Close',        shortcut: 'Ctrl+W', onClick: () => removeFile(id) },
+            { label: 'Close Others', onClick: () => files.slice().filter(f => f.id !== id).forEach(f => removeFile(f.id)) },
+            { label: 'Close All',    danger: true, onClick: () => files.slice().forEach(f => removeFile(f.id)) }
+          ]);
+        }
+      });
+
+      // ========== FILE SEARCH ==========
+      document.getElementById('file-search').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        document.querySelectorAll('.file-list .group-items li').forEach(li => {
+          li.style.display = li.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+      });
+
+      // ========== SESSION ==========
+      function saveSession() {
+        if (!settings.restore) return;
+        try {
+          const state = files.map(f => ({ name: f.name, content: models[f.id] ? models[f.id].getValue() : '' }));
+          localStorage.setItem(SESSION_KEY, JSON.stringify(state));
+        } catch {}
+      }
+      function restoreSession() {
+        if (!settings.restore) return false;
+        try {
+          const state = JSON.parse(localStorage.getItem(SESSION_KEY) || '[]');
+          if (!Array.isArray(state) || state.length === 0) return false;
+          state.forEach(s => addFile(s.name, s.content));
+          setActive(files[0].id); renderTabs();
+          files.forEach(f => markClean(f.id));
+          return true;
+        } catch { return false; }
+      }
+      window.addEventListener('beforeunload', saveSession);
+      setInterval(saveSession, 30000);
+
+      // ========== WIRE UP BUTTONS ==========
+      document.getElementById('add-tab').addEventListener('click', () => {
+        const f = addFile(null, '');
+        renderTabs(); setActive(f.id);
+      });
+      document.getElementById('btn-run').addEventListener('click', doRun);
+      document.getElementById('btn-save').addEventListener('click', doSave);
+      document.getElementById('btn-clear').addEventListener('click', () => {
+        if (!activeId || !models[activeId]) return;
+        models[activeId].setValue('');
+        monacoEditor.focus();
+      });
+      document.getElementById('btn-inject').addEventListener('click', doInject);
+      document.getElementById('btn-launch').addEventListener('click', doLaunch);
+      document.getElementById('btn-kill').addEventListener('click', doKillRoblox);
+      document.getElementById('btn-settings').addEventListener('click', openSettings);
+      document.getElementById('scroll-bottom').addEventListener('click', () => consoleBody.scrollTop = consoleBody.scrollHeight);
+      document.getElementById('clear-console').addEventListener('click', () => consoleBody.innerHTML = '');
+
+      document.querySelectorAll('.ex-group .group-head').forEach(head =>
+        head.addEventListener('click', () => head.parentElement.classList.toggle('collapsed')));
+
+      monacoEditor.onDidChangeCursorPosition(e => {
+        document.getElementById('cursor-pos').textContent = 'Ln ' + e.position.lineNumber + ', Col ' + e.position.column;
+      });
+
+      // ========== KEYBOARD SHORTCUTS ==========
+      document.addEventListener('keydown', (e) => {
+        const mod = e.ctrlKey || e.metaKey;
+        if (e.key === 'Escape') { hideContextMenu(); closeSettings(); aiPanel.classList.remove('open'); }
+        if (e.key === 'F5') { e.preventDefault(); doRun(); }
+        if (mod && e.key === 'Enter') { e.preventDefault(); doRun(); }
+        if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); doSave(); }
+        if (mod && e.key.toLowerCase() === 'i') { e.preventDefault(); doInject(); }
+        if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); doLaunch(); }
+        if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); doKillRoblox(); }
+        if (mod && e.key.toLowerCase() === 'n') { e.preventDefault(); const f = addFile(null, ''); renderTabs(); setActive(f.id); }
+        if (mod && e.key.toLowerCase() === 'w') { e.preventDefault(); if (activeId) removeFile(activeId); }
+        if (mod && e.key === ',')              { e.preventDefault(); openSettings(); }
+        if (mod && e.key === '/')              { e.preventDefault(); aiPanel.classList.toggle('open'); }
+      });
+
+      // ========== FLOATING TOOLBAR DRAG ==========
+      const toolbar = document.getElementById('floating-toolbar');
+      const handle  = document.getElementById('drag-handle');
+      let dox=0,doy=0,dragging=false;
+      handle.addEventListener('mousedown', (e) => {
+        e.preventDefault(); dragging = true; toolbar.classList.add('dragging');
+        const r = toolbar.getBoundingClientRect();
+        const pr = toolbar.parentElement.getBoundingClientRect();
+        dox = e.clientX - r.left; doy = e.clientY - r.top;
+        toolbar.style.left = (r.left - pr.left) + 'px'; toolbar.style.top = (r.top - pr.top) + 'px';
+        toolbar.style.right = 'auto'; toolbar.style.bottom = 'auto';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+      function onMove(e) {
+        if (!dragging) return;
+        const pr = toolbar.parentElement.getBoundingClientRect();
+        let x = e.clientX - pr.left - dox, y = e.clientY - pr.top - doy;
+        x = Math.max(0, Math.min(x, pr.width - toolbar.offsetWidth));
+        y = Math.max(0, Math.min(y, pr.height - toolbar.offsetHeight));
+        toolbar.style.left = x+'px'; toolbar.style.top = y+'px';
+      }
+      function onUp() { dragging=false; toolbar.classList.remove('dragging'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+
+      // ========== FILE LIST ==========
+      async function refreshFiles() {
+        const r = await bridge('listFiles');
+        if (!r || !r.ok) return;
+        renderFileList('list-workspace', r.workspace || []);
+        renderFileList('list-autoexec', r.autoexec || []);
+      }
+      function renderFileList(elementId, names) {
+        const ul = document.getElementById(elementId);
+        ul.innerHTML = '';
+        names.forEach(name => {
+          const li = document.createElement('li');
+          li.textContent = name;
+          li.addEventListener('click', async () => {
+            const r = await bridge('readFile', { folder: elementId === 'list-workspace' ? 'workspace' : 'autoexec', name });
+            if (r && r.ok) {
+              const f = addFile(name, r.content || '');
+              renderTabs(); setActive(f.id);
+            } else log('err', 'read failed: ' + name);
+          });
+          ul.appendChild(li);
+        });
+      }
+
+      // ========== INIT ==========
+      applySettings();
+      if (!restoreSession()) {
+        addFile(null, '-- vesper · press F5 or play to execute\nprint(identifyexecutor())\n');
+        setActive(files[0].id);
+        renderTabs();
+      }
+      files.forEach(f => markClean(f.id));
+      log('info', 'vesper ready');
+      toast('info', HOST ? 'vesper ready' : 'preview mode — bridge offline', 1800);
+
+      if (HOST) {
+        setInterval(async () => {
+          const r = await bridge('isAttached');
+          setAttached(r && r.attached, r && r.game);
+        }, 1000);
+        refreshFiles();
+        setInterval(refreshFiles, 3000);
+      }
+    });
+  </script>
+</body>
+</html>

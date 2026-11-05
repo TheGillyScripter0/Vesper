@@ -1,0 +1,4 @@
+// resource script — embeds the compiled DLL and the HTML UI into vesper.exe
+
+EXECUTOR_DLL  RCDATA  "executor_dll.dll"
+ALPEN_HTML    RCDATA  "alpen.html"
