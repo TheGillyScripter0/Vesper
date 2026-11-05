@@ -744,9 +744,16 @@
             <div class="setting-row">
               <div>Backend<div class="setting-hint">Which AI service to use</div></div>
               <select id="s-ai-backend">
-                <option value="openai">OpenAI (GPT-4o)</option>
+                <option value="openai">OpenAI (GPT)</option>
                 <option value="anthropic">Anthropic (Claude)</option>
+                <option value="gemini">Google (Gemini)</option>
+                <option value="xai">xAI (Grok)</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="mistral">Mistral</option>
+                <option value="groq">Groq (fast)</option>
+                <option value="openrouter">OpenRouter (any model)</option>
                 <option value="local">Local (LM Studio / Ollama)</option>
+                <option value="custom">Custom endpoint</option>
               </select>
             </div>
             <div class="setting-row">
@@ -1026,6 +1033,24 @@
         document.getElementById('s-ramlimit').value = settings.ramlimit;
         document.getElementById('s-cpupriority').value = settings.cpupriority;
         document.getElementById('s-ai-backend').value = settings.aiBackend;
+        const backendDefaults = {
+          openai:     { model: 'gpt-4o-mini',                  endpoint: '' },
+          anthropic:  { model: 'claude-3-5-sonnet-20241022',   endpoint: '' },
+          gemini:     { model: 'gemini-2.0-flash',             endpoint: '' },
+          xai:        { model: 'grok-2-latest',                endpoint: '' },
+          deepseek:   { model: 'deepseek-chat',                endpoint: '' },
+          mistral:    { model: 'mistral-small-latest',         endpoint: '' },
+          groq:       { model: 'llama-3.3-70b-versatile',      endpoint: '' },
+          openrouter: { model: 'anthropic/claude-3.5-sonnet',  endpoint: '' },
+          local:      { model: 'local-model',                  endpoint: 'http://localhost:1234/v1' },
+          custom:     { model: 'gpt-4o-mini',                  endpoint: 'https://your-api.com/v1/chat/completions' }
+        };
+        document.getElementById('s-ai-backend').addEventListener('change', (e) => {
+          const d = backendDefaults[e.target.value];
+          if (d && !document.getElementById('s-ai-model').dataset.userModified) document.getElementById('s-ai-model').value = d.model;
+          if (d && d.endpoint) document.getElementById('s-ai-endpoint').value = d.endpoint;
+        });
+        document.getElementById('s-ai-model').addEventListener('input', (e) => e.target.dataset.userModified = 'true');
         document.getElementById('s-ai-key').value = settings.aiKey;
         document.getElementById('s-ai-endpoint').value = settings.aiEndpoint;
         document.getElementById('s-ai-model').value = settings.aiModel;
@@ -1315,24 +1340,36 @@
           const systemPrompt = "You are a Luau scripting assistant for Roblox exploits. Generate clean, working Luau code. Always wrap code in ```lua ... ``` blocks. Use executor environment functions (getgenv, hookfunction, HttpGet, etc.) where appropriate.";
           let url, headers, body;
 
-          if (settings.aiBackend === 'openai') {
-            url = 'https://api.openai.com/v1/chat/completions';
-            headers = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + settings.aiKey };
-            body = JSON.stringify({
-              model: settings.aiModel,
-              messages: [{ role:'system', content: systemPrompt }, ...aiHistory.map(m => ({ role: m.role, content: m.content }))]
-            });
-          } else if (settings.aiBackend === 'anthropic') {
-            url = 'https://api.anthropic.com/v1/messages';
-            headers = { 'Content-Type':'application/json', 'x-api-key': settings.aiKey, 'anthropic-version':'2023-06-01' };
+          const endpoints = {
+            openai:     { url:'https://api.openai.com/v1/chat/completions', auth:'bearer' },
+            anthropic:  { url:'https://api.anthropic.com/v1/messages',       auth:'anthropic' },
+            gemini:     { url:'https://generativelanguage.googleapis.com/v1beta/models/' + (settings.aiModel || 'gemini-2.0-flash') + ':generateContent?key=' + settings.aiKey, auth:'none' },
+            xai:        { url:'https://api.x.ai/v1/chat/completions',        auth:'bearer' },
+            deepseek:   { url:'https://api.deepseek.com/v1/chat/completions',auth:'bearer' },
+            mistral:    { url:'https://api.mistral.ai/v1/chat/completions',  auth:'bearer' },
+            groq:       { url:'https://api.groq.com/openai/v1/chat/completions', auth:'bearer' },
+            openrouter: { url:'https://openrouter.ai/api/v1/chat/completions', auth:'bearer' },
+            local:      { url: settings.aiEndpoint + '/chat/completions',   auth:'none' },
+            custom:     { url: settings.aiEndpoint,                          auth:'bearer' }
+          };
+          const cfg = endpoints[settings.aiBackend] || endpoints.openai;
+          url = cfg.url;
+          headers = { 'Content-Type':'application/json' };
+          if (cfg.auth === 'bearer' && settings.aiKey) headers['Authorization'] = 'Bearer ' + settings.aiKey;
+          if (cfg.auth === 'anthropic') { headers['x-api-key'] = settings.aiKey; headers['anthropic-version'] = '2023-06-01'; }
+
+          if (settings.aiBackend === 'anthropic') {
             body = JSON.stringify({
               model: settings.aiModel || 'claude-3-5-sonnet-20241022',
               max_tokens: 2048, system: systemPrompt,
               messages: aiHistory.map(m => ({ role: m.role, content: m.content }))
             });
+          } else if (settings.aiBackend === 'gemini') {
+            body = JSON.stringify({
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents: aiHistory.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }))
+            });
           } else {
-            url = settings.aiEndpoint + '/chat/completions';
-            headers = { 'Content-Type':'application/json' };
             body = JSON.stringify({
               model: settings.aiModel,
               messages: [{ role:'system', content: systemPrompt }, ...aiHistory.map(m => ({ role: m.role, content: m.content }))]
@@ -1343,6 +1380,7 @@
           const data = await res.json();
           let text = '';
           if (settings.aiBackend === 'anthropic') text = data.content?.[0]?.text || JSON.stringify(data);
+          else if (settings.aiBackend === 'gemini') text = data.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(data);
           else text = data.choices?.[0]?.message?.content || JSON.stringify(data);
 
           thinkingEl.remove();
