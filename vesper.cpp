@@ -35,6 +35,10 @@ extern "C" NTSTATUS NTAPI NtQueryInformationProcess(
     HANDLE ProcessHandle, PROCESSINFOCLASS ProcessInformationClass,
     PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
 
+// forward declarations (definitions are further down)
+static std::wstring u2w(const std::string& s);
+static std::string  w2u(const std::wstring& w);
+
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
@@ -336,9 +340,10 @@ static std::string early_bird_launch(const std::string& launch_args) {
         return "NtQueryInformationProcess failed";
     }
 
-    PEB peb{};
-    ReadProcessMemory(pi.hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), nullptr);
-    uintptr_t rbx_base = (uintptr_t)peb.ImageBaseAddress;
+    // winternl.h's PEB struct doesn't expose ImageBaseAddress — read it directly at offset 0x10
+    void* image_base_ptr = nullptr;
+    ReadProcessMemory(pi.hProcess, (char*)pbi.PebBaseAddress + 0x10, &image_base_ptr, sizeof(image_base_ptr), nullptr);
+    uintptr_t rbx_base = (uintptr_t)image_base_ptr;
 
     IMAGE_DOS_HEADER rdos{};
     ReadProcessMemory(pi.hProcess, (void*)rbx_base, &rdos, sizeof(rdos), nullptr);
