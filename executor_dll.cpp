@@ -9,7 +9,9 @@
 // matches, so the executor keeps working without you deriving new addresses.
 // if a pattern breaks, replace just that one entry in patterns.hpp.
 
-#include <Windows.h>
+#include <Windows.h>#include <shlobj.h>
+#include <psapi.h>
+
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
