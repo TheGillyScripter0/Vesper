@@ -22,56 +22,113 @@ jobs:
     - name: Dependencies
       shell: cmd
       run: |
-        nuget install Microsoft.Web.WebView2 -OutputDirectory packages -ExcludeVersion
-        nuget install Microsoft.Windows.ImplementationLibrary -OutputDirectory packages -ExcludeVersion
+        nuget install Microsoft.Web.WebView2 -OutputDirectory packages -ExcludeVersion || exit /b 1
+        nuget install Microsoft.Windows.ImplementationLibrary -OutputDirectory packages -ExcludeVersion || exit /b 1
 
     - name: Rename vendored core
       shell: cmd
       run: |
-        if exist quorum\QuorumAPI.dll copy quorum\QuorumAPI.dll quorum\vesper_core.dll
+        if not exist quorum\QuorumAPI.dll (
+            echo ERROR: quorum\QuorumAPI.dll missing from repo
+            exit /b 1
+        )
+        copy /Y quorum\QuorumAPI.dll quorum\vesper_core.dll || exit /b 1
 
     - name: Resources
       shell: cmd
       run: |
-        rc /nologo /fo vesper.res vesper.rc
-        rc /nologo /fo installer.res installer.rc
+        rc /nologo /fo vesper.res vesper.rc        || exit /b 1
+        rc /nologo /fo installer.res installer.rc  || exit /b 1
 
     - name: Native (vesper.exe)
       shell: cmd
       run: |
-        cl /nologo /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE /I "packages\Microsoft.Web.WebView2\build\native\include" /I "packages\Microsoft.Windows.ImplementationLibrary\include" vesper.cpp vesper.res "packages\Microsoft.Web.WebView2\build\native\x64\WebView2LoaderStatic.lib" user32.lib shell32.lib ole32.lib advapi32.lib /link /OUT:vesper.exe /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup
+        cl /nologo /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE ^
+           /I "packages\Microsoft.Web.WebView2\build\native\include" ^
+           /I "packages\Microsoft.Windows.ImplementationLibrary\include" ^
+           vesper.cpp vesper.res ^
+           "packages\Microsoft.Web.WebView2\build\native\x64\WebView2LoaderStatic.lib" ^
+           user32.lib shell32.lib ole32.lib advapi32.lib ^
+           /link /OUT:vesper.exe /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup || exit /b 1
+        if not exist vesper.exe (
+            echo ERROR: vesper.exe did not build
+            exit /b 1
+        )
 
     - name: Native (vesper-setup.exe)
       shell: cmd
       run: |
-        cl /nologo /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE installer.cpp installer.res user32.lib gdi32.lib shell32.lib shlwapi.lib ole32.lib oleaut32.lib uuid.lib winhttp.lib comctl32.lib /link /OUT:vesper-setup.exe /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup
+        cl /nologo /std:c++17 /EHsc /O2 /MT /DUNICODE /D_UNICODE ^
+           installer.cpp installer.res ^
+           user32.lib gdi32.lib shell32.lib shlwapi.lib ole32.lib oleaut32.lib uuid.lib winhttp.lib comctl32.lib ^
+           /link /OUT:vesper-setup.exe /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup || exit /b 1
+        if not exist vesper-setup.exe (
+            echo ERROR: vesper-setup.exe did not build
+            exit /b 1
+        )
 
-    - name: Managed
+    - name: Managed (QuorumBridge → vesper_svc.exe)
       shell: cmd
-      run: dotnet build QuorumBridge.csproj -c Release -o build-cs
+      run: |
+        dotnet build QuorumBridge.csproj -c Release -o build-cs || exit /b 1
+        if exist build-cs\vesper_svc.exe (
+            echo Found build-cs\vesper_svc.exe
+        ) else (
+            if exist build-cs\QuorumBridge.exe (
+                echo Renaming build-cs\QuorumBridge.exe to vesper_svc.exe
+                move /Y build-cs\QuorumBridge.exe build-cs\vesper_svc.exe || exit /b 1
+            ) else (
+                echo ERROR: neither vesper_svc.exe nor QuorumBridge.exe found in build-cs
+                dir build-cs
+                exit /b 1
+            )
+        )
 
     - name: Write version.txt
       shell: cmd
       run: echo %GITHUB_SHA:~0,7% > version.txt
 
+    - name: Diagnose what was built
+      shell: cmd
+      run: |
+        echo === repo root ===
+        dir
+        echo.
+        echo === build-cs (dotnet output) ===
+        if exist build-cs dir build-cs
+        echo.
+        echo === quorum folder ===
+        if exist quorum dir quorum
+
     - name: Package main app
       shell: cmd
       run: |
+        if exist dist rmdir /s /q dist
         mkdir dist
         mkdir dist\lib
-        copy vesper.exe dist\
-        copy vesper-setup.exe dist\
-        copy version.txt dist\
-        copy build-cs\vesper_svc.exe dist\lib\
-        copy quorum\vesper_core.dll dist\lib\
-        if exist quorum\bin xcopy /E /I /Y quorum\bin dist\lib\bin
-        if exist quorum\erto3e4rortoergn.exe copy quorum\erto3e4rortoergn.exe dist\lib\
-        if exist quorum\Decompiler.exe copy quorum\Decompiler.exe dist\lib\
-        if exist quorum\current_version.txt copy quorum\current_version.txt dist\lib\
+        copy /Y vesper.exe dist\                            || exit /b 1
+        copy /Y vesper-setup.exe dist\                      || exit /b 1
+        copy /Y version.txt dist\                           || exit /b 1
+        copy /Y build-cs\vesper_svc.exe dist\lib\           || exit /b 1
+        copy /Y quorum\vesper_core.dll dist\lib\            || exit /b 1
+        if exist quorum\bin                    xcopy /E /I /Y quorum\bin dist\lib\bin
+        if exist quorum\erto3e4rortoergn.exe   copy /Y quorum\erto3e4rortoergn.exe dist\lib\
+        if exist quorum\Decompiler.exe         copy /Y quorum\Decompiler.exe dist\lib\
+        if exist quorum\current_version.txt    copy /Y quorum\current_version.txt dist\lib\
+        echo.
+        echo === final dist contents ===
+        dir dist /s
 
     - name: Create vesper.zip
       shell: pwsh
-      run: Compress-Archive -Path dist\* -DestinationPath vesper.zip -Force
+      run: |
+        Compress-Archive -Path dist\* -DestinationPath vesper.zip -Force
+        $size = (Get-Item vesper.zip).Length
+        Write-Host "vesper.zip size: $size bytes"
+        if ($size -lt 1048576) {
+            Write-Error "vesper.zip is suspiciously small (<1MB). Build is broken."
+            exit 1
+        }
 
     - uses: actions/upload-artifact@v4
       with:
